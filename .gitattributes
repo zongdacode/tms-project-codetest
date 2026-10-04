@@ -1,0 +1,30 @@
+# 统一换行符：仓库内存 LF，避免 Windows/Linux 协作者产生整文件 diff
+* text=auto eol=lf
+
+# 显式声明为二进制，禁止换行转换
+*.docx  binary
+*.xlsx  binary
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.zip   binary
+*.jar   binary
+
+# 保留 CRLF（Windows 脚本）
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+
+# 文本文件统一 LF
+*.java    text eol=lf
+*.xml     text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.sql     text eol=lf
+*.md      text eol=lf
+*.json    text eol=lf
+*.ts      text eol=lf
+*.vue     text eol=lf
+*.sh      text eol=lf

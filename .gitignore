@@ -1,0 +1,46 @@
+# ---- 构建产物 ----
+target/
+build/
+out/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ---- 前端 ----
+node_modules/
+dist/
+.vite/
+unpackage/
+
+# ---- 本地环境 / 凭据（绝不入库）----
+.env
+.env.local
+*.local
+.mysql/
+.redis/
+application-local.yml
+*-local.yml
+
+# ---- 工具与临时文件 ----
+.wsl-install.log
+*.log
+*.tmp
+~$*
+
+# ---- 文档解包中间产物（可由 .docx 重新生成，不入库）----
+_extract/
+
+# ---- IDE ----
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+
+# ---- 操作系统 ----
+Thumbs.db
+Desktop.ini
+.DS_Store
