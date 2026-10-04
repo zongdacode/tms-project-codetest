@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.tms</groupId>
+    <artifactId>tms-project</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>tms-auth</artifactId>
+  <name>tms-auth</name>
+  <description>认证与权限：用户、角色、菜单、登录、Token、操作日志（sys_ 表）。未来服务①，阶段 2 首个拆出的服务。</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.tms</groupId>
+      <artifactId>tms-framework</artifactId>
+    </dependency>
+  </dependencies>
+</project>

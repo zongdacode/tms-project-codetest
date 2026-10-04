@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.tms</groupId>
+    <artifactId>tms-project</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>tms-admin</artifactId>
+  <name>tms-admin</name>
+  <description>启动模块：Spring Boot 入口，聚合全部业务模块；架构红线测试与跨模块集成测试也落在这里（全局唯一的可运行应用，单上下文最快）。</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.tms</groupId>
+      <artifactId>tms-framework</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.tms</groupId>
+      <artifactId>tms-auth</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.tms</groupId>
+      <artifactId>tms-base</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.tms</groupId>
+      <artifactId>tms-plan</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.tms</groupId>
+      <artifactId>tms-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- 测试 -->
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>

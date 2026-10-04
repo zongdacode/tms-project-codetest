@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.tms</groupId>
+    <artifactId>tms-project</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>tms-core</artifactId>
+  <name>tms-core</name>
+  <description>运输执行域（tms_ 表）：shipment/waybill/dispatch/track/sign/report 子域。核心服务③·永不先拆 [ADR-004][A7]。
+    原 artifactId 为 tms-tms（语感重复，且包名会变成 com.tms.tms），批 0 统一改为 tms-core；服务边界与包名 com.tms.core 一一对应。</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.tms</groupId>
+      <artifactId>tms-framework</artifactId>
+    </dependency>
+  </dependencies>
+</project>

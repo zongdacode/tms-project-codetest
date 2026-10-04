@@ -1,0 +1,89 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: tms-admin
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+  sql:
+    init:
+      # always：每次启动都执行 schema 脚本，脚本必须幂等（CREATE TABLE IF NOT EXISTS）。
+      # 这不是版本化迁移，与 Flyway 不是一回事——见文件末尾"待办 1"。
+      mode: always
+      schema-locations: classpath:db/schema-mysql.sql
+  # 默认（无 profile）连真实 MySQL。
+  # h2 profile 只用于测试上下文（h2 依赖是 test scope，spring-boot:run 起不来），
+  # 见 application-h2.yml 顶部说明。
+  #
+  # 刻意不写 spring.profiles.active：把默认 profile 写进配置文件后，
+  # 测试的 @ActiveProfiles 能否覆盖它取决于框架内部的属性优先级，
+  # 会出现"以为在测 h2、其实连了 MySQL"或反过来。少一个变量就少一类事故。
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/tms?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false&rewriteBatchedStatements=true
+    username: tms
+    password: tms123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 10000
+      pool-name: tms-hikari
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: assign_id
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+tms:
+  event:
+    outbox:
+      # 批 0 没有订阅方（无 EventPublisher 实现），投递器扫到事件会告警但不改动它们，
+      # 避免把"还没接订阅方"误判成"投递失败"从而把有效事件置成 DEAD。
+      # 批 2 落地首个投递实现后必须确认这里为 true。
+      dispatcher-enabled: true
+      scan-batch-size: 100
+      scan-interval-ms: 30000
+      max-retries: 5
+      # 退避序列长度必须等于 max-retries，否则启动即失败（OutboxDispatcher 会校验）。
+      backoff:
+        - 1m
+        - 5m
+        - 30m
+        - 2h
+        - 6h
+
+logging:
+  level:
+    com.tms: debug
+
+# 待办（批次 1 前必须定）：
+#   1. schema 目前是 spring.sql.init + 两套手写 DDL（mysql/h2），两套必然漂移。
+#      长期应换 Flyway 版本化迁移。Flyway 在 Boot 4 上尚未验证（[13-gate0] 未覆盖），
+#      切换前先补验证，不要直接加依赖就改。
+#   2. Redis 相关配置缺失——本机无 Redis，Gate 0 未覆盖（[13-gate0] §5.3）。
+#      批 1 使用 RedisCacheHelper / RedisDistributedLock 前必须先补验证。
+#   3. 生产 profile（prod）尚未建立：连接池、日志、actuator 暴露面都需要单独收口，
+#      留到部署批次，不要用当前这套直接上生产。
+#      其中 `management.endpoint.health.show-details: always` 必须改成 when-authorized：
+#      它会把库类型、磁盘路径、各组件状态一并给出，等于给未认证访问者一份内网清单。
+#      默认（开发）profile 保留 always 是有意的——健康检查报 DOWN 时看得见是哪个组件，
+#      这个诊断价值在开发期大于暴露风险。上生产前务必收紧。

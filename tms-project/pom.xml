@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- 版本线由 docs/13-gate0-技术栈验证报告.md §2 锁定，改动需先过 Gate -->
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.1.1</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>com.tms</groupId>
+  <artifactId>tms-project</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>tms-project</name>
+  <description>TMS 运输管理系统（模块化单体起步，按需拆粗粒度服务）</description>
+
+  <modules>
+    <module>tms-common</module>
+    <module>tms-framework</module>
+    <module>tms-auth</module>
+    <module>tms-base</module>
+    <module>tms-plan</module>
+    <module>tms-core</module>
+    <module>tms-admin</module>
+  </modules>
+
+  <properties>
+    <java.version>21</java.version>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+    <!-- Gate 0 锁定版本，见 docs/13 §2 -->
+    <mybatis-plus.version>3.5.17</mybatis-plus.version>
+    <springdoc.version>3.1.1</springdoc.version>
+    <archunit.version>1.5.1</archunit.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- 内部模块统一版本 -->
+      <dependency>
+        <groupId>com.tms</groupId>
+        <artifactId>tms-common</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.tms</groupId>
+        <artifactId>tms-framework</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.tms</groupId>
+        <artifactId>tms-auth</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.tms</groupId>
+        <artifactId>tms-base</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.tms</groupId>
+        <artifactId>tms-plan</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.tms</groupId>
+        <artifactId>tms-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <!-- MyBatis-Plus：starter 与 jsqlparser 必须成对出现（漏 jsqlparser 会导致分页静默失效） -->
+      <dependency>
+        <groupId>com.baomidou</groupId>
+        <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+        <version>${mybatis-plus.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.baomidou</groupId>
+        <artifactId>mybatis-plus-jsqlparser</artifactId>
+        <version>${mybatis-plus.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.springdoc</groupId>
+        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        <version>${springdoc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.tngtech.archunit</groupId>
+        <artifactId>archunit-junit5</artifactId>
+        <version>${archunit.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- 全模块测试基座（Boot 4：MockMvc 已拆到 webmvc-test，缺它 @AutoConfigureMockMvc 编译不过） -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <configuration>
+            <!-- 中文测试名与堆栈不乱码 -->
+            <argLine>-Dfile.encoding=UTF-8</argLine>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>

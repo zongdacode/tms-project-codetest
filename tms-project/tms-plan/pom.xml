@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.tms</groupId>
+    <artifactId>tms-project</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>tms-plan</artifactId>
+  <name>tms-plan</name>
+  <description>计划表独立模块（tms_order_plan）：主单四节点状态协调、事件幂等消费、对外主单状态查询。订单中心雏形 [ADR-006/015]。</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.tms</groupId>
+      <artifactId>tms-framework</artifactId>
+    </dependency>
+  </dependencies>
+</project>
