@@ -1,16 +1,47 @@
 # TMS 系统开发文档
 
 > 本套文档面向开发、测试、运维与架构演进人员，是 **TMS 系统**的架构与开发基线；WMS 为**外部系统**（仅约定集成契约），结算等其他外部系统对接 `[待定]`，不在本文档范围。
-> 技术栈**未指定**：凡涉及具体框架、中间件、云产品的选择，一律标注 `[待定]`，本文档不代为拍板。
+> 技术栈**已锁定**（2026-10-04，Gate 0 通过）：JDK 21 + Spring Boot 4.1.1 + MyBatis-Plus 3.5.17 + springdoc 3.1.1，版本矩阵与实测结论见 [13](13-gate0-技术栈验证报告.md)。其余未确认项仍标 `[待定]`。
 
 ## 目录
 
+- [工程进度](#工程进度)
 - [文档地图](#文档地图)
 - [阅读顺序建议](#阅读顺序建议)
 - [标记约定](#标记约定)
 - [术语速查](#术语速查)
 - [与 docs/ 既有文档的关系](#与-docs-既有文档的关系)
 - [文档维护规则](#文档维护规则)
+
+---
+
+## 工程进度
+
+| 批次 | 内容 | 状态 |
+|---|---|---|
+| Gate 0 | 技术栈验证（Boot 4 生态能否落地） | ✅ 完成 2026-10-04（[13](13-gate0-技术栈验证报告.md)） |
+| 批 0 | 脚手架：7 模块空壳 + 框架层横切组件 + 红线测试 + CI | ✅ 完成，见下 |
+| 批 1 起 | 按域实装（auth → base → plan → tms 各子域） | ⏳ 未开始（[12](12-execution-plan.md) §3 之后） |
+
+**批 0 交付物**（`tms-project/`）：
+
+| 项 | 落点 | 验证方式 |
+|---|---|---|
+| 模块骨架 | `tms-common/framework/auth/base/plan/tms/admin` | `mvn compile` |
+| 号段发号 | `framework/idgen/SegmentAllocator` + `SegmentIdGenerator` | 唯一性/递增/换段集成测试 |
+| 审计与乐观锁 | `framework/mybatis/BaseEntity` + `AuditMetaObjectHandler` | 填充与陈旧版本更新集成测试 |
+| 事务性发件箱 | `framework/event/OutboxRecorder` + `OutboxDispatcher` | 同事务提交/回滚、退避阶梯、耗尽置 DEAD |
+| 幂等消费 | `framework/event/InboxGuard` | 重复事件只执行一次 |
+| 统一异常 | `framework/web/exception/GlobalExceptionHandler` | 状态码映射、5xx 不回显消息、事件端点让出 |
+| 红线测试 | `tms-admin/.../arch/` | R-1 跨模块、R-2 字段白名单（含故意的反例用例） |
+| 健康检查 | `tms-admin` `/actuator/health` | 真实端口 HTTP 验收测试 |
+| CI | `.github/workflows/ci.yml` | 编译 → 测试 → 架构专项 → 打包 |
+
+**已知未完成**（批 1 前必须解决）：
+
+- **Redis 完全未验证**（无本机 Redis、Docker 不可用）：`RedisCacheHelper` / `RedisDistributedLock` 带"未验证"警示，使用前需补验证。
+- **迁移工具未定**：当前是手写的 `schema-mysql.sql` + `schema-h2.sql` 两份 DDL，会漂移；Flyway 在 Boot 4 上未验证。
+- 生产 profile、真实 MySQL 的 CI 任务待补。
 
 ---
 

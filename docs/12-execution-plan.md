@@ -54,7 +54,7 @@ tms-project/
 ├── tms-auth/            # 批次1实装；api/ 子包规范第一天就位
 ├── tms-base/            # 批次1实装
 ├── tms-plan/            # 计划表独立模块 [ADR-006]——批次2实装，壳先建
-├── tms-tms/             # 运输执行域：shipment/waybill/dispatch/track/sign/report 域优先分包
+├── tms-core/            # 运输执行域：shipment/waybill/dispatch/track/sign/report 域优先分包
 │                        #   [ADR-004][A7]；api/ 子包规范第一天就位
 ├── tms-admin/           # Spring Boot 启动模块 + application-{env}.yml
 └── (wms/fee 不建——外部系统 [ADR-003/005])
@@ -79,18 +79,22 @@ tms-project/
 ### 3.3 红线测试与 CI
 
 - 架构测试规则（随批次 0 落地）：
-  1. tms-plan 与 tms-tms 禁止互相依赖 Mapper/Entity（R-1）；
+  1. tms-plan 与 tms-core 禁止互相依赖 Mapper/Entity（R-1）；
   2. 计划表实体字段白名单校验（R-2，新增字段必须改文档+测试同步改）；
   3. 跨模块只能 import 对方 `api/` 包（A-3 依赖纪律）。
-- CI 流水线：编译 → 单测 → 架构测试 → 打包；本地依赖（MySQL/Redis）docker compose 已备好 `docker-compose.yml`，但**本机无 WSL2、Docker 引擎起不来**（[13] §5）——批 0 的 CI 先只跑 H2 + 架构测试，真实库任务待环境解锁后补。
+- CI 流水线：编译 → 单测 → 架构测试 → 打包；落地为 `.github/workflows/ci.yml`（四步拆开，让红线失败独立可见）。**本机无 WSL2、Docker 引擎起不来**（[13] §5），原本设想的"docker compose 起本地依赖"不可用——批 0 的 CI 先只跑 H2 + 架构测试，MySQL/Redis 任务待环境解锁后补。
+  注：`docker-compose.yml` 目前**尚未创建**，待真实库任务落地时一并补。
 - 框架层常驻测试（从 [13] §3 提升，非一次性脚本）：号段发号唯一性、事务性发件箱同事务、回滚一致性、幂等消费去重、分页 SQL 改写。
 
-### 3.4 批次 0 验收
+### 3.4 批次 0 验收（2026-10-05 完成）
 
-- [ ] tms-admin 可启动，健康检查可用
-- [ ] framework 各组件有集成测试
-- [ ] 红线测试存在且当前为绿（含一个故意的反例用例验证其有效性）
-- [ ] CI 全绿
+- [x] tms-admin 可启动，健康检查可用 —— `TmsAdminApplicationTests` 起真实端口打 `/actuator/health`
+- [x] framework 各组件有集成测试 —— 号段、审计/乐观锁、分页改写、发件箱、幂等消费、统一异常、投递退避，共 41 项
+- [x] 红线测试存在且当前为绿（含一个故意的反例用例验证其有效性）—— `arch/` 下 7 项，其中 3 项为反例测试
+- [x] CI 全绿 —— `.github/workflows/ci.yml`，四步本地均已通过；**待首次 push 后确认远端为绿**
+
+> 批 0 实装期间新发现 4 条 Boot 4 差异（Jackson 3、422 常量改名、ArchUnit `failOnEmptyShould`、
+> 嵌套 `@TestConfiguration` 的发现范围），已补入 [13](13-gate0-技术栈验证报告.md) §4-⑥~⑨。
 
 ## 4. 每块功能的标准节奏
 

@@ -68,16 +68,23 @@
 | id | BIGINT | 主键 |
 | event_id | VARCHAR(64) | 事件全局唯一 ID（UUID），投递重试时**不变** |
 | event_type | VARCHAR(64) | 见 [06] §3 事件字典 |
+| source_system | VARCHAR(32) | 事件来源系统（TMS / WMS / …），[06] §3 信封字段 |
 | biz_order_no / line_no | VARCHAR(64) / INT | 关联键 |
+| aggregate_version | INT | 聚合版本，[06] §3 信封字段；接收方据此判断事件是否乱序 |
 | occurred_at | DATETIME | 业务发生时间 |
-| payload | JSON/TEXT | 事件负载（结构见 [06]） |
+| payload | JSON/TEXT | 事件负载**明细**（结构见 [06]）；信封关键字段已各自成列，不在此重复 |
 | target_system | VARCHAR(32) | 目标系统（订阅方列表 `[待定]`） |
+| trace_id | VARCHAR(64) | 链路追踪 ID，[06] §3 信封字段；可为空 |
 | status | VARCHAR(16) | PENDING / SENT / FAILED / DEAD |
 | retry_count | INT | 已重试次数 |
 | next_retry_at | DATETIME | 下次重试时间（退避） |
 | created_at / sent_at | DATETIME | 审计 |
 
 写入规则：业务事务内**同事务落 outbox**，投递器异步扫描发送（事务性发件箱模式），保证"业务成功 ⇔ 事件必达（至少一次）"。
+
+> `[已决策 2026-10-04：批 0 实测修正]` 本表原定义缺 `source_system`、`aggregate_version`、`trace_id` 三列。
+> 它们是 [06] §3 事件信封的必填/可选字段，且**从其余列推不出来**——投递时无法还原完整信封。
+> 实现阶段发现后补齐，建表脚本与实体同步（`OutboxEvent`、`db/schema-mysql.sql`、`db/schema-h2.sql`）。
 
 ### 3.2 收件箱 inbox_consumed（接收方幂等记录）
 

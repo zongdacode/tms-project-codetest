@@ -65,7 +65,7 @@
 >
 > 测试数据源为 H2（`MODE=MySQL`），验证的是 **MyBatis-Plus 在 Boot 4 下的行为与 SQL 生成**；MySQL 8.4 的真实驱动/方言验证见 §5。
 
-## 4. 关键发现（Boot 3 → 4 的破坏性差异）
+## 4. 关键发现（Boot 3 → 4 的破坏性差异，及批 0 实装踩到的坑）
 
 以下是实际踩到并已解决的坑，**批 0 脚手架必须照此写**，否则第一步就报错：
 
@@ -110,6 +110,67 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 ### ⑤ Maven 未做任何特殊配置
 
 无需 `-Dspring-boot.repackage` 之类的变通，`spring-boot-maven-plugin` 4.1.1 开箱可用。本地仓库从零拉全量依赖无冲突、无版本仲裁告警。
+
+> **以下 ⑥–⑨ 是批 0 实装阶段补的**（2026-10-04）。Gate 0 当时只建了骨架、没写业务代码，这四条要等到真正写类、写测试时才暴露。
+> 它们与 ①–⑤ 同性质：都是 Boot 3 → 4 的破坏性差异，只是触发时机更晚。
+
+### ⑥ Jackson 3：包名变了，异常也不再是受检异常
+
+Boot 4.1.1 的 HTTP 消息转换走的是 **Jackson 3**（`tools.jackson.core:jackson-databind:3.1.5`），不是 Jackson 2。三处影响：
+
+| 项 | Jackson 2（旧写法） | Jackson 3（Boot 4 实际） |
+|---|---|---|
+| 数据绑定入口 | `com.fasterxml.jackson.databind.JsonNode` / `ObjectMapper` | `tools.jackson.databind.JsonNode` / `ObjectMapper` |
+| 异常基类 | `JsonProcessingException`（**受检**，必须 try/catch 或 throws） | `tools.jackson.core.JacksonException`（**非受检**，`RuntimeException` 子类） |
+| 注解 | `com.fasterxml.jackson.annotation.*` | **不变**，仍是 `com.fasterxml.jackson.annotation.*`（jackson-annotations 2.21） |
+
+**最容易被误伤的是第 2 行**，而且方向容易想反。旧写法 `catch (JsonProcessingException e)` 在 Boot 4 上写了会直接编译失败（类不存在）。真正危险的是另一种情形：既然异常变成非受检，**"必须处理"的编译期强制就消失了**——原本忘了 catch 会编译不过，现在忘了 catch 照样编译通过，坏数据一路往上冒到兜底处理器才被发现。写反序列化代码时要自己盯住这条。
+
+> 注：`spring-boot-starter-test` 里的 `ObjectMapper` 注入的是 Jackson 3 实例；`application.yml` 里若有 Jackson 2 时代的配置项，需要核对是否改名。
+
+### ⑦ `HttpStatus.UNPROCESSABLE_ENTITY` 已过时 → 改用 `UNPROCESSABLE_CONTENT`
+
+Spring Framework 7 起，`UNPROCESSABLE_ENTITY` 标记 `@Deprecated`，替代品是 `UNPROCESSABLE_CONTENT`（RFC 9110 把 422 的语义名从 Unprocessable Entity 改为 Unprocessable Content）。**状态码数值仍是 422**，只是枚举常量名变了。业务拒绝（4xxxx）映射到 422 的地方要注意：用旧名编译只有告警，但会在后续版本被移除。
+
+### ⑧ ArchUnit 1.x：`failOnEmptyShould` 默认为 `true`，规则匹配不到类会**失败**而不是**通过**
+
+这是好事，但会绊住第一次写架构测试的人：一条"禁止 A 依赖 B"的规则，如果 `importPackages` 里根本没有 A 或 B 的类，规则不会"因为没有违规而通过"，而是直接报 `failed to check any classes`。
+
+批 0 实测到两个具体后果：
+
+1. 反例测试（故意违规的 fixture）必须**把被规则两端的类都 import 进来**，只 import 违规方会让规则匹配不到另一半而失败；
+2. 反过来，这个行为正好充当了"规则是否还在生效"的自检——重构把某个包改名后，架构测试会红，而不是静默失效。**不要为了让它变绿去关掉 `failOnEmptyShould`。**
+
+### ⑨ `@TestConfiguration` 的嵌套类只在"声明 `@SpringBootTest` 的那个类"里被发现
+
+若 `@SpringBootTest` 写在测试基类上、嵌套 `@TestConfiguration` 写在子类里，子类那个**不会被注册**（Spring 只扫描声明该注解的类的嵌套配置类）。后果很隐蔽：注入的 `List<Xxx>` 少了一个实现，代码不报错、只是行为不对。
+
+处置：把嵌套配置类改成显式 `@Import(SomeTest.XxxConfig.class)`，或把 `@SpringBootTest` 挪到具体测试类上。批 0 的 `OutboxDispatcherTest` 就是踩到这条之后改成显式 `@Import` 的。
+
+### ⑩ MyBatis-Plus `strictUpdateFill` 会**跳过已有值**的字段——审计时间戳会静默冻结
+
+这一条不是 Boot 4 特有，是 MyBatis-Plus 的语义陷阱，但杀伤力比上面几条都大，所以一并记在这里。
+
+`MetaObjectHandler` 的 `strictInsertFill` / `strictUpdateFill` 语义是"**字段为空才填**"。写审计填充时很容易顺手写成：
+
+```java
+public void updateFill(MetaObject metaObject) {
+    strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());   // ✗ 错的
+}
+```
+
+而更新的常规流程是"**从库里读出实体 → 改几个业务字段 → 整对象存回**"。此时实体上的 `updatedAt` 是上次落库的值、并不为空，`strictUpdateFill` 于是直接跳过，UPDATE 语句把**旧的审计值原样写回**。
+
+后果：更新成功、业务字段确实改了，只有 `updated_at` 停在插入时刻不动，**全程不报任何错**。靠它做的增量同步、审计追溯、缓存失效判定会全部失灵。批 0 实测踩中（2026-10-05）。
+
+**正确写法**：`updateFill` 里用 `setFieldValByName` 无条件覆盖（`insertFill` 保持 `strictInsertFill`，以便历史数据迁移能保留原始 `created_at`）。落点：[AuditMetaObjectHandler](../../tms-project/tms-framework/src/main/java/com/tms/framework/mybatis/handler/AuditMetaObjectHandler.java)。
+
+> 这条的教训不止在实现上，也在断言上：最初的测试断言的是 `updatedAt` **≥** 插入时间，
+> 而"内存纳秒值 vs 库内微秒值"的精度截断恰好让它恒成立——它一直在**为错误的理由变绿**。
+> 改成"严格大于"之后立刻变红，才挖出这个 bug。
+> 对比同期的另一条：`OutboxDispatcherTest` 里"配置缺失时事件保持原状"那条一开始也是绿的，
+> 但查下来是**因为投递实现压根没注册**（§4-⑨）——同样是"绿得没有道理"。
+> **看到绿色要问一句：它是靠什么绿的？**
 
 ## 5. 真实数据库运行时验证
 
@@ -171,6 +232,11 @@ cd gate0-sandbox && mvn test -Dspring.profiles.active=mysql
 4. §3 第 5/8/9/10/11 项直接提升为**框架层的常驻测试**（不是一次性验证脚本）——它们是 [ADR-011] / [ADR-016] 的机制保证。
 5. [12-execution-plan] §3.3 的"CI 里 docker compose 起本地依赖"**当前不可用**（本机无 WSL2/Docker，§5.1），批 0 的 CI 先跑 H2 + 架构测试；MySQL 侧可用 `-Dspring.profiles.active=mysql` 指向既有 MySQL 实例。
 6. ArchUnit 1.5.1 可用，[12] §3.3 的 R-1/R-2 红线规则可落地；[12] §7 "接口文档工具 `[待定]`" **可落定为 springdoc 3.1.1**。
+7. 涉及 JSON 读写的代码统一走 `tools.jackson.*`（§4-⑥）；`GlobalExceptionHandler`、`EventEnvelope` 等横切类里的 JSON 异常应按**非受检**处理，不要靠编译器提醒。
+8. 状态码映射统一用 `UNPROCESSABLE_CONTENT`（§4-⑦），批 0 的 `GlobalExceptionHandler` 已按此实装。
+9. 写架构测试时不要关闭 `failOnEmptyShould`（§4-⑧）；写测试配置时注意嵌套 `@TestConfiguration` 的发现范围（§4-⑨）。
+10. `@LocalServerPort` 实测存在于 `org.springframework.boot.test.web.server.LocalServerPort`（自 Boot 3.0 起就在此包，Boot 4 未再挪动），可用。批 0 的启动验收测试改用读属性 `local.server.port`，只是为了少依赖一个类的包路径——两种写法等价。
+11. 审计字段填充：`insertFill` 用 `strictInsertFill`、`updateFill` **必须**用 `setFieldValByName`（§4-⑩）——这是批 0 实测发现并修掉的一个真实缺陷，后续所有继承 `BaseEntity` 的模块都受益于此。
 7. **Redis 相关组件（缓存/分布式锁）落地时需先解决验证途径**——本机无 Redis 且 Docker 不可用（§5.3），别把"没有测试"当成"实现正确"。
 
 ## 7. 环境能力备忘（后续排障用）
