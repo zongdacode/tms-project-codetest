@@ -1,20 +1,33 @@
-# Compiled class files
+# ============================================================================
+# TMS 工程 .gitignore
+#
+# ⚠ 2026-10-05：本文件曾被 GitHub 网页端的 Java 模板**整体覆盖**，
+#   丢掉了下面「本地环境 / 凭据」与「文档解包产物」两组规则。
+#   这不是洁癖问题：application-local.yml 里放的是数据库口令，
+#   .mysql/ 是本机 1.3GB 的数据目录，_extract/ 是 9MB 的解包中间产物。
+#   现已合并回模板内容（模板多出的条目一并保留）。
+#
+#   以后再改，请在此文件上做增量修改，不要在网页端选模板整体替换——
+#   "Add file → 选模板"那个流程会静默丢弃现有内容，且提交信息看不出是替换。
+# ============================================================================
+
+# ---- 构建产物 ----
+target/
+build/
+out/
 *.class
-
-# Log files
-*.log
-
-# Package files
 *.jar
 *.war
 *.nar
 *.ear
+!.mvn/wrapper/maven-wrapper.jar
+
+# ---- 压缩包 ----
 *.zip
 *.tar.gz
 *.rar
 
-# Maven
-target/
+# ---- Maven 元数据 ----
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -23,22 +36,47 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
 
-# IDE
+# ---- 前端 ----
+node_modules/
+dist/
+.vite/
+unpackage/
+
+# ---- 本地环境 / 凭据（绝不入库）----
+# 安全规则，不是洁癖：application-local.yml 里放的是数据库口令与连接串。
+.env
+.env.local
+*.local
+.mysql/
+.redis/
+application-local.yml
+*-local.yml
+
+# ---- 工具与临时文件 ----
+.wsl-install.log
+*.log
+*.tmp
+~$*
+
+# ---- 文档解包中间产物（可由 .docx 重新生成，9MB，不入库）----
+_extract/
+
+# ---- IDE ----
 .idea/
-*.iws
 *.iml
 *.ipr
+*.iws
 .vscode/
 .settings/
 .project
 .classpath
 .factorypath
 
-# OS
-.DS_Store
+# ---- 操作系统 ----
 Thumbs.db
+Desktop.ini
+.DS_Store
 
-# Test output
+# ---- 测试输出 ----
 surefire-reports/
