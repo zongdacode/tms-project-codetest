@@ -27,21 +27,28 @@
 
 | 项 | 落点 | 验证方式 |
 |---|---|---|
-| 模块骨架 | `tms-common/framework/auth/base/plan/tms/admin` | `mvn compile` |
+| 模块骨架 | `tms-common/framework/auth/base/plan/core/admin` | `mvn compile` |
 | 号段发号 | `framework/idgen/SegmentAllocator` + `SegmentIdGenerator` | 唯一性/递增/换段集成测试 |
 | 审计与乐观锁 | `framework/mybatis/BaseEntity` + `AuditMetaObjectHandler` | 填充与陈旧版本更新集成测试 |
 | 事务性发件箱 | `framework/event/OutboxRecorder` + `OutboxDispatcher` | 同事务提交/回滚、退避阶梯、耗尽置 DEAD |
 | 幂等消费 | `framework/event/InboxGuard` | 重复事件只执行一次 |
 | 统一异常 | `framework/web/exception/GlobalExceptionHandler` | 状态码映射、5xx 不回显消息、事件端点让出 |
-| 红线测试 | `tms-admin/.../arch/` | R-1 跨模块、R-2 字段白名单（含故意的反例用例） |
+| 红线测试 | `tms-admin/.../arch/` | R-1 计划表↔执行域、R-2 字段白名单、A-3 跨模块只走 api/（含故意的反例用例） |
 | 健康检查 | `tms-admin` `/actuator/health` | 真实端口 HTTP 验收测试 |
-| CI | `.github/workflows/ci.yml` | 编译 → 测试 → 架构专项 → 打包 |
+| CI | `.github/workflows/ci.yml` | ✅ 远端绿（[run 37252957588](https://github.com/zongdacode/tms-project-codetest/actions/runs/37252957588)）：编译 → 单测 → 架构专项 → 打包 → 传产物 |
 
 **已知未完成**（批 1 前必须解决）：
 
 - **Redis 完全未验证**（无本机 Redis、Docker 不可用）：`RedisCacheHelper` / `RedisDistributedLock` 带"未验证"警示，使用前需补验证。
 - **迁移工具未定**：当前是手写的 `schema-mysql.sql` + `schema-h2.sql` 两份 DDL，会漂移；Flyway 在 Boot 4 上未验证。
 - 生产 profile、真实 MySQL 的 CI 任务待补。
+
+**维护注意**：`.gitignore` 与 `.github/workflows/ci.yml` **不要用 GitHub 网页端的
+"Add file → 选模板"去改**——那个流程会整体覆盖现有文件，而提交信息
+（如 `ci: add GitHub Actions workflow and .gitignore`）完全看不出是替换。
+2026-10-05 发生过一次：`.gitignore` 丢掉了 `application-local.yml` / `*.local` /
+`.mysql/` 等规则（前两条关系到数据库口令是否会被提交），`ci.yml` 丢掉了架构红线专项步骤。
+改这两个文件请在本地做增量修改。
 
 ---
 
