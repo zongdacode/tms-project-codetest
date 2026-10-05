@@ -49,6 +49,18 @@
       <artifactId>mysql-connector-j</artifactId>
       <scope>runtime</scope>
     </dependency>
+    <!-- ⚠ Boot 4 起自动装配按技术拆成了独立模块：光有 org.flywaydb:flyway-core
+         不会让 Boot 装配 Flyway（FlywayAutoConfiguration 已不在 spring-boot-autoconfigure 里），
+         必须引 org.springframework.boot:spring-boot-starter-flyway。
+         配错的表现很有迷惑性：容器照常启动、架构测试照常绿，只有碰库的测试全红。 -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-mysql</artifactId>
+    </dependency>
 
     <!-- 测试 -->
     <dependency>

@@ -9,12 +9,17 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
     default-property-inclusion: non_null
+  flyway:
+    # 版本化迁移：替代原 spring.sql.init 的手写两套 DDL 方案，
+    # 解决 MySQL/H2 两份 DDL 必然漂移的问题。
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    out-of-order: false
   sql:
     init:
-      # always：每次启动都执行 schema 脚本，脚本必须幂等（CREATE TABLE IF NOT EXISTS）。
-      # 这不是版本化迁移，与 Flyway 不是一回事——见文件末尾"待办 1"。
-      mode: always
-      schema-locations: classpath:db/schema-mysql.sql
+      # Flyway 接管后禁用原生 SQL 初始化，避免重复建表。
+      mode: never
   # 默认（无 profile）连真实 MySQL。
   # h2 profile 只用于测试上下文（h2 依赖是 test scope，spring-boot:run 起不来），
   # 见 application-h2.yml 顶部说明。

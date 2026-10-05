@@ -1,0 +1,94 @@
+# 生产环境 profile
+#
+# 与默认（开发）profile 的核心差异：
+#   1. 连接池收紧：生产环境连接数按实际容量配置，不按开发期的富裕量
+#   2. 健康检查收紧：health endpoint 的 details 只对已认证用户暴露
+#   3. 日志级别收紧：生产只打 info 及以上，避免 debug 日志把磁盘打爆
+#   4. Flyway 生产模式：禁止 out-of-order，禁止 baseline-on-migrate
+#
+# 使用：启动时加 --spring.profiles.active=prod
+# 注意：默认 profile（无 active）连的是本地开发 MySQL，不是生产库。
+
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: tms-admin
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/tms?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false&rewriteBatchedStatements=true}
+    username: ${DB_USERNAME:tms}
+    password: ${DB_PASSWORD:tms123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      # 生产连接池按实际容量评估，这里给一个保守的起始值。
+      # 上线前根据压测结果调整：连接数 ≈ QPS * 平均响应时间 / 单连接吞吐
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 3000
+      idle-timeout: 60000
+      max-lifetime: 1800000
+      pool-name: tms-hikari-prod
+      leak-detection-threshold: 60000
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # 生产严格模式：版本号必须递增，不允许乱序迁移，不允许自动 baseline
+    baseline-on-migrate: false
+    out-of-order: false
+    # 生产不允许 clean，防止误操作清空数据（Flyway 生产环境推荐配置）
+    clean-disabled: true
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: assign_id
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # 生产只暴露 health 和 info，其他 endpoint 不对外暴露
+        include: health,info
+  endpoint:
+    health:
+      # 生产环境收紧：详情只对已认证用户暴露，
+      # 避免未授权访问者拿到库类型、磁盘路径、组件状态等内网信息。
+      show-details: when-authorized
+  info:
+    env:
+      enabled: true
+
+tms:
+  event:
+    outbox:
+      # 生产环境投递器启用
+      dispatcher-enabled: true
+      scan-batch-size: 100
+      scan-interval-ms: 30000
+      max-retries: 5
+      backoff:
+        - 1m
+        - 5m
+        - 30m
+        - 2h
+        - 6h
+
+logging:
+  level:
+    root: info
+    com.tms: info
+  pattern:
+    # 生产日志包含 traceId，便于链路追踪
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

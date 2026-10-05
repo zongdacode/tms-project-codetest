@@ -14,12 +14,12 @@ spring:
     username: sa
     password: ''
     driver-class-name: org.h2.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   sql:
     init:
-      schema-locations: classpath:db/schema-h2.sql
-  h2:
-    console:
-      enabled: false
+      mode: never
 
 # 批 0 不使用 Redis（RedisCacheHelper / RedisDistributedLock 尚未验证，见类注释），
 # 但 spring-boot-starter-data-redis 已在依赖里，健康检查会去连它、连不上就整体 DOWN。
