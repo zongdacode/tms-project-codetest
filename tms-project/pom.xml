@@ -22,10 +22,8 @@
   <modules>
     <module>tms-common</module>
     <module>tms-framework</module>
-    <module>tms-auth</module>
-    <module>tms-base</module>
-    <module>tms-plan</module>
     <module>tms-core</module>
+    <module>tms-plan</module>
     <module>tms-admin</module>
   </modules>
 
@@ -52,16 +50,6 @@
       <dependency>
         <groupId>com.tms</groupId>
         <artifactId>tms-framework</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.tms</groupId>
-        <artifactId>tms-auth</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.tms</groupId>
-        <artifactId>tms-base</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>

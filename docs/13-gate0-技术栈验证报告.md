@@ -41,7 +41,7 @@
 | 测试基座 | `spring-boot-starter-test` | 4.1.1（BOM） | **不含 MockMvc**，见 §4-① |
 | 测试-MVC | `spring-boot-starter-webmvc-test` | 4.1.1（BOM） | Boot 4 新增拆分出的模块 |
 
-> 服务化（阶段 2）的 Nacos / Gateway / OpenFeign / SCA `2025.1.0.0` **本 Gate 不验证**——阶段 2 触发时才引入，届时另起 Gate。
+> ~~服务化（阶段 2）的 Nacos / Gateway / OpenFeign / SCA `2025.1.0.0`~~ **已取消**（2026-10-05，[ADR-018]）：不再拆服务，这些组件不进技术栈。仅当计划表迁出为订单中心（[ADR-015]）确实需要独立部署时，才在**那一条边界**上重新评估，届时候补矩阵另起 Gate。
 
 ## 3. 验证结果（11 项全绿）
 
@@ -111,8 +111,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 
 无需 `-Dspring-boot.repackage` 之类的变通，`spring-boot-maven-plugin` 4.1.1 开箱可用。本地仓库从零拉全量依赖无冲突、无版本仲裁告警。
 
-> **以下 ⑥–⑨ 是批 0 实装阶段补的**（2026-10-04）。Gate 0 当时只建了骨架、没写业务代码，这四条要等到真正写类、写测试时才暴露。
-> 它们与 ①–⑤ 同性质：都是 Boot 3 → 4 的破坏性差异，只是触发时机更晚。
+> **以下 ⑥–⑫ 是批 0 实装阶段补的**（2026-10-04 ~ 10-05）。Gate 0 当时只建了骨架、没写业务代码，这几条要等到真正写类、写测试时才暴露。
+> 它们与 ①–⑤ 同性质：多数是 Boot 3 → 4 的破坏性差异，只是触发时机更晚（⑩ 例外，是 MyBatis-Plus 的语义陷阱）。
 
 ### ⑥ Jackson 3：包名变了，异常也不再是受检异常
 
@@ -171,6 +171,41 @@ public void updateFill(MetaObject metaObject) {
 > 对比同期的另一条：`OutboxDispatcherTest` 里"配置缺失时事件保持原状"那条一开始也是绿的，
 > 但查下来是**因为投递实现压根没注册**（§4-⑨）——同样是"绿得没有道理"。
 > **看到绿色要问一句：它是靠什么绿的？**
+
+### ⑪ Flyway 的自动装配已从 `spring-boot-autoconfigure` 拆出——只引 `flyway-core` 不会生效
+
+Boot 4 起，各技术的自动装配从单体 `spring-boot-autoconfigure` 拆成了独立模块（`spring-boot-flyway`、`spring-boot-jdbc` …）。`spring-boot-autoconfigure-4.1.1.jar` 里已经**搜不到** `FlywayAutoConfiguration`。
+
+后果：`org.flywaydb:flyway-core` 只是把 Flyway 本体放上 classpath，**不含任何 Spring Boot 集成**，Boot 不会自动配置它。正确依赖是：
+
+```xml
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-flyway</artifactId>   <!-- ← 必须用它 -->
+</dependency>
+<dependency>
+  <groupId>org.flywaydb</groupId>
+  <artifactId>flyway-mysql</artifactId>                  <!-- 数据库方言模块仍要单独引 -->
+</dependency>
+```
+
+**这条坑的迷惑性在于表现**：应用照常启动、健康检查正常、架构测试照常绿——容器本身没问题，只是 Flyway 压根没跑。只有真的读写表的测试会红，报 `Table "SYS_ID_SEGMENT" not found`。批 0 实测：切 Flyway 时漏了 starter，**20 个碰库测试全红，而 12 个不碰库的照常通过**。
+
+排查提示：`spring.sql.init.mode` 若同时设成 `never`（Flyway 接管时的常见写法），就是"旧脚本关了、新工具没跑"，库里一张表都不会有——这个组合的症状与"Flyway 报错"完全不同，更容易误判。
+
+### ⑫ 单份 DDL 同时服务 H2 与 MySQL 时，`DATETIME` 会把时间精度降到秒
+
+切 Flyway 后，原先 H2/MySQL 各一份的 DDL 合并成了一份 `V1__init_schema.sql`。合并时若照抄 MySQL 那一份，会踩到：
+
+| 写法 | MySQL | H2（`MODE=MySQL`） |
+|---|---|---|
+| `DATETIME` | 0 位小数秒 | 映射为 `TIMESTAMP(0)`，同样只有秒 |
+| `DATETIME(3)` | 毫秒 | 毫秒 |
+| `TIMESTAMP`（原 `schema-h2.sql` 用的写法） | — | 微秒/纳秒 |
+
+原 `schema-h2.sql` 用的是 `TIMESTAMP`（高精度），合并后的 `DATETIME` 降到秒级。**这不是测试特有的问题**：MySQL 上 `DATETIME` 同样只有秒，同一秒内的两次写入无法区分——事件表按 `occurred_at` 排序、审计字段做增量比较都会失去分辨力。批 0 实测：`AuditAndOptimisticLockTest` 断言"更新后 `updated_at` 严格大于插入时"，秒级精度下插入与更新落在同一秒，测试变红；改 `DATETIME(3)` 后恢复。
+
+**顺带一条纪律**：`V1__init_schema.sql` 一旦在真实库上执行过，Flyway 会校验 checksum，之后改动必须出 `V2__xx.sql`。批 0 期间它只跑过内存 H2（每次重建），所以直接改 V1 是安全的——**这个窗口在接真实 MySQL 后就关闭**。
 
 ## 5. 真实数据库运行时验证
 

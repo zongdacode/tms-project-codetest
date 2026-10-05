@@ -12,8 +12,10 @@
 
   <artifactId>tms-core</artifactId>
   <name>tms-core</name>
-  <description>运输执行域（tms_ 表）：shipment/waybill/dispatch/track/sign/report 子域。核心服务③·永不先拆 [ADR-004][A7]。
-    原 artifactId 为 tms-tms（语感重复，且包名会变成 com.tms.tms），批 0 统一改为 tms-core；服务边界与包名 com.tms.core 一一对应。</description>
+  <description>单一 TMS 业务模块，按域分包 [ADR-018]：auth（sys_ 表）/ base（base_ 表）/
+    shipment/waybill/dispatch/track/sign/report（tms_ 表）。
+    原先 auth/base 是独立模块（按"未来服务"边界拆），2026-10-05 取消内部接口拆分、并入本模块；
+    全系统只保留 tms-plan ↔ tms-core 这一条模块边界（[ADR-015] 计划表将整体迁出为订单中心）。</description>
 
   <dependencies>
     <dependency>

@@ -22,22 +22,14 @@ class ArchitectureRulesTest {
     static void importProductionClasses() {
         productionClasses = new ClassFileImporter()
                 // 排除 test-classes：违规样例住在 com.tms.core.mapper 等真实包名下，
-                // 不排除的话它们会被当成生产代码，这两条测试就永远红。
+                // 不排除的话它们会被当成生产代码，这条测试就永远红。
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("com.tms");
     }
 
     @Test
-    @DisplayName("R-1：计划表与运输执行域不共享内部模型")
+    @DisplayName("R-1：计划表与执行域不共享内部模型")
     void planAndExecutionMustNotShareInternals() {
         ArchRules.planAndExecutionMustNotShareInternals().check(productionClasses);
-    }
-
-    @Test
-    @DisplayName("A-3：跨模块只能依赖对方 api/ 包")
-    void crossModuleMustOnlyUseApiPackages() {
-        for (String module : ArchRules.BUSINESS_MODULES) {
-            ArchRules.moduleMustOnlyUseOtherModuleApi(module).check(productionClasses);
-        }
     }
 }

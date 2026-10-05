@@ -31,7 +31,7 @@
 
 | 红线 | 检测方式 | 时机 |
 |---|---|---|
-| R-1/R-2 | 架构测试（依赖规则断言，工具 `[待定]`）+ 计划表 DDL 变更强制评审 + SQL 审计扫描跨前缀 join | CI / 发布前 / 例行审计 |
+| R-1/R-2 | 架构测试（ArchUnit 1.5.1 依赖规则断言，`ArchRules.planAndExecutionMustNotShareInternals` + `R2PlanTableFieldWhitelistTest`）+ 计划表 DDL 变更强制评审 + SQL 审计扫描跨前缀 join | CI / 发布前 / 例行审计 |
 | R-3 | 数据库账号权限矩阵审查（外部系统账号对 TMS 业务库零授权）+ 网络策略 | 上线前 + 季度审查 |
 | R-4 | 集成测试含故障注入用例：TMS 宕机时 WMS 出库全流程必须成功（事件滞留 outbox） | CI / 发布前 |
 | R-5 | 集成上线检查单（幂等/重试逐项签核）；事件投递监控（DEAD/重试率） | 方案评审 + 上线门禁 |

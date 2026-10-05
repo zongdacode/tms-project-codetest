@@ -21,14 +21,6 @@
     </dependency>
     <dependency>
       <groupId>com.tms</groupId>
-      <artifactId>tms-auth</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.tms</groupId>
-      <artifactId>tms-base</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.tms</groupId>
       <artifactId>tms-plan</artifactId>
     </dependency>
     <dependency>

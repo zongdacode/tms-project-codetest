@@ -21,26 +21,26 @@
 |---|---|---|
 | Gate 0 | 技术栈验证（Boot 4 生态能否落地） | ✅ 完成 2026-10-04（[13](13-gate0-技术栈验证报告.md)） |
 | 批 0 | 脚手架：7 模块空壳 + 框架层横切组件 + 红线测试 + CI | ✅ 完成，见下 |
-| 批 1 起 | 按域实装（auth → base → plan → tms 各子域） | ⏳ 未开始（[12](12-execution-plan.md) §3 之后） |
+| 批 1 起 | 按域实装（tms-core 的 auth/base 域 → plan → 执行各域） | ⏳ 未开始（[12](12-execution-plan.md) §3 之后） |
 
 **批 0 交付物**（`tms-project/`）：
 
 | 项 | 落点 | 验证方式 |
 |---|---|---|
-| 模块骨架 | `tms-common/framework/auth/base/plan/core/admin` | `mvn compile` |
+| 模块骨架 | `tms-common/framework/core/plan/admin`（5 个；[ADR-018] 收拢后从 7 个合并为 5 个） | `mvn compile` |
 | 号段发号 | `framework/idgen/SegmentAllocator` + `SegmentIdGenerator` | 唯一性/递增/换段集成测试 |
 | 审计与乐观锁 | `framework/mybatis/BaseEntity` + `AuditMetaObjectHandler` | 填充与陈旧版本更新集成测试 |
 | 事务性发件箱 | `framework/event/OutboxRecorder` + `OutboxDispatcher` | 同事务提交/回滚、退避阶梯、耗尽置 DEAD |
 | 幂等消费 | `framework/event/InboxGuard` | 重复事件只执行一次 |
 | 统一异常 | `framework/web/exception/GlobalExceptionHandler` | 状态码映射、5xx 不回显消息、事件端点让出 |
-| 红线测试 | `tms-admin/.../arch/` | R-1 计划表↔执行域、R-2 字段白名单、A-3 跨模块只走 api/（含故意的反例用例） |
+| 红线测试 | `tms-admin/.../arch/` | R-1 计划表↔执行域、R-2 字段白名单（含故意的反例用例）。原 A-3 已随 [ADR-018] 删除 |
 | 健康检查 | `tms-admin` `/actuator/health` | 真实端口 HTTP 验收测试 |
 | CI | `.github/workflows/ci.yml` | ✅ 远端绿（[run 37252957588](https://github.com/zongdacode/tms-project-codetest/actions/runs/37252957588)）：编译 → 单测 → 架构专项 → 打包 → 传产物 |
 
 **已知未完成**（批 1 前必须解决）：
 
 - **Redis 完全未验证**（无本机 Redis、Docker 不可用）：`RedisCacheHelper` / `RedisDistributedLock` 带"未验证"警示，使用前需补验证。
-- **迁移工具未定**：当前是手写的 `schema-mysql.sql` + `schema-h2.sql` 两份 DDL，会漂移；Flyway 在 Boot 4 上未验证。
+- **迁移工具已切 Flyway**（2026-10-05）：`db/migration/V1__init_schema.sql` 单份脚本同时服务 H2 与 MySQL，原先手写的 `schema-h2.sql`/`schema-mysql.sql` 已成死文件（无人引用，待删）。Boot 4 上的坑见 [13](13-gate0-技术栈验证报告.md) §4-⑪。
 - 生产 profile、真实 MySQL 的 CI 任务待补。
 
 **维护注意**：`.gitignore` 与 `.github/workflows/ci.yml` **不要用 GitHub 网页端的
@@ -60,6 +60,7 @@
 | [01-architecture-decisions.md](01-architecture-decisions.md) | 架构决策记录（ADR），全部已确定决策与依据 | 架构、开发、新人 |
 | [02-system-context.md](02-system-context.md) | 系统上下文图、系统职责矩阵、数据主权 | 所有人 |
 | [03-domain-boundaries.md](03-domain-boundaries.md) | TMS 领域边界与模块划分；WMS 集成边界 | 开发、架构 |
+| [03-权限管理统一设计方案.md](03-权限管理统一设计方案.md) | **核心**：认证与权限模型设计（tms-core 的 auth 域依据）。与本套 03-domain-boundaries 同号，靠文件名区分 | 开发、架构 |
 | [04-core-flows.md](04-core-flows.md) | 8 条核心业务流程：时序图 + 状态流转 | 开发、测试 |
 | [05-data-model.md](05-data-model.md) | TMS 数据模型（计划表、事件表）、单号规范 | 开发、DBA |
 | [06-api-contracts.md](06-api-contracts.md) | 同步接口与事件语义接口契约、事件字典、幂等规范 | 开发、测试 |
@@ -123,7 +124,8 @@
 
 | 既有文档 | 状态 |
 |---|---|
-| [references/](references/) 下的 01-PRD分析报告 / 03-权限管理 / 04-核心单据字段清单 | **外部参照**：其他系统（OTWB 蓝图）的分析产物，仅作业务借鉴，不是本系统的建设依据。已移入 `docs/references/` 子目录与 TMS 基线文档分开——它们原本与本套文档**编号撞车**（本套的 01/03/04 是 architecture-decisions / domain-boundaries / core-flows） |
+| [references/](references/) 下的 01-PRD分析报告 / 04-核心单据字段清单 | **外部参照**：其他系统（OTWB 蓝图）的分析产物，仅作业务借鉴，不是本系统的建设依据。已移入 `docs/references/` 子目录与 TMS 基线文档分开——它们原本与本套文档**编号撞车**（本套的 01/04 是 architecture-decisions / core-flows） |
+| [03-权限管理统一设计方案.md](03-权限管理统一设计方案.md) | **本系统核心文件**（2026-10-05 起，此前列为外部参照）：tms-core 的 auth 域权限模型设计依据。与本套 [03-domain-boundaries.md](03-domain-boundaries.md) 同号，靠文件名区分 |
 | 02-AI能力规划.md | AI 能力规划参考；其中"事件化数据"理念与本套文档的本地事件表、计划表设计一致 |
 | 05-系统架构与项目结构方案 | TMS 工程骨架参考（Maven 结构、跨模块规则、技术栈 Gate 0）；系统拓扑以本套文档 [ADR-001] 为准，其 V2.1 已移除 WMS/结算模块 |
 
